@@ -1,0 +1,39 @@
+---
+title: "PresidentialSpeechesNLP"
+author: "Wyatt Thompson"
+date: "September 18, 2017"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(ggplot2)
+library(dplyr)
+library(reshape2)
+library(plyr)
+library(readr)
+library(zoo)
+library(xts)
+library(lubridate)
+library(tidyr)
+library(tidytext)
+library(tm)
+library(Rgraphviz)
+library(glmnet)
+setwd("/Users/WyattThompson/Documents/GitHub/fall2017-project1-thompsonwyatt/data/InauguralSpeeches")
+
+
+```
+Reading in the data
+
+```{r}
+setwd("/Users/WyattThompson/Documents/GitHub/fall2017-project1-thompsonwyatt/data/InauguralSpeeches")
+speeches<- list.files()
+speechlist<- lapply(speeches, read_file)
+speechlist<-as.vector(speechlist)
+df<-data.frame(
+  pres=speeches
+)
+df$text<-speechlist
+tm<-DataframeSource(tmdf) 
+```
