@@ -1,39 +1,232 @@
 ---
-title: "PresidentialSpeechesNLP"
+title: "The Secret to Greatness: A Look Into Historians' Presidential Rankings"
 author: "Wyatt Thompson"
 date: "September 18, 2017"
-output: pdf_document
+output:
+  html_document: default
+  pdf_document: default
 ---
+![Abe Lincoln---a jedi of rhetoric](https://i.pinimg.com/736x/4f/2f/38/4f2f3888586433b6950532edefa250cc--abraham-lincoln-images-gettysburg-address.jpg)
 
+#Introduction
+When we read the history books, certain presidents stand out as more important than others: Abe Lincoln, George Washington, Franklin Roosevelt, John F Kennedy, Barack Obama. But what makes a great president so great? The state of the economy, the policies they passed, their leadership style, undoubtedly play a role. But when the job description includes addressing the public on a regular basis, one would expect that a president's speaking style and rhetoric certainly matter as well! In this project, I explore the the text from presidential inaugeration speeches with an eye for sentence length and the breakdown of their sentiment. By pairing this with the C-SPAN historical ranking of presidents, I hope to gain some insight into what kind of a speaker the historians tend to find appealing. 
+
+The main goal of this project is to explore the text mining packages in R and survey some methods of text analysis. However, maybe we'll find that the best presidents were longwinded optimists, or perhaps punctuated pessimists!
+
+A note here about the assumptions of this analysis. First, I'm assuming that the sentiment of the inaugeration speech captures a general sentiment of the speaker, and I'm leaving out the obviously important variables of their impact on society. 
+
+##Load Packages
+First, let's load in the right packages and start reading in some data!
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 library(ggplot2)
+library(gplots)
 library(dplyr)
 library(reshape2)
-library(plyr)
 library(readr)
-library(zoo)
-library(xts)
+#library(zoo)
+#library(xts)
 library(lubridate)
 library(tidyr)
 library(tidytext)
 library(tm)
-library(Rgraphviz)
-library(glmnet)
-setwd("/Users/WyattThompson/Documents/GitHub/fall2017-project1-thompsonwyatt/data/InauguralSpeeches")
+library(wordcloud)
+#library(Rgraphviz)
+library(qdap)
+library(syuzhet)
 
 
 ```
-Reading in the data
 
-```{r}
-setwd("/Users/WyattThompson/Documents/GitHub/fall2017-project1-thompsonwyatt/data/InauguralSpeeches")
-speeches<- list.files()
+I've got a folder of every inaugeration speech saved as a .txt file, so the first thing I need to do is bring in the speeches and put them into a format that we can use for some fun analysis. In this chunk of code, I take the speeches and put them into a Document-Term Matrix so we can see what words the presidents are using most frequently. I then create a wordcloud across all presidential speeches to visualize the relative frequency of words and get a handle on what this text mining analysis will look like. 
+##Format and Import Data
+```{r,warnings=FALSE}
+ranking<-read.csv("../data/CSPANRanking.csv",header = F)
+
+files<- list.files(path="../data/InauguralSpeeches")
+speeches<-trimws(files)
+speeches<- paste("../data/InauguralSpeeches/",speeches, sep="")
 speechlist<- lapply(speeches, read_file)
 speechlist<-as.vector(speechlist)
+files<-gsub("inaug","",files)
+files<-gsub(".txt","",files)
 df<-data.frame(
   pres=speeches
 )
 df$text<-speechlist
-tm<-DataframeSource(tmdf) 
+df$text<-as.character(df$text)
+speech.corp<-Corpus(VectorSource(df$text))
+speech.corp<-tm_map(speech.corp,stripWhitespace)
+speech.corp<-tm_map(speech.corp,content_transformer(tolower))
+speech.corp<-tm_map(speech.corp,removeWords, stopwords("english"))
+speech.corp<-tm_map(speech.corp,removePunctuation)
+speech.corp<-tm_map(speech.corp, removeWords, character(0))
+dtm<-TermDocumentMatrix(speech.corp)
+dtm.tidy<-tidy(dtm)
+dtm.overall<-summarise(group_by(dtm.tidy,term), sum(count))
+
+wordcloud(dtm.overall$term,dtm.overall$`sum(count)`,
+          scale=c(5,.5),
+          max.words=50,
+          min.freq=1,
+          random.order=FALSE,
+          colors=brewer.pal(9,"Blues"))
+
+
+# for(i in length(df$pres)){
+#   temp<-df$text[i]
+#   speech.list[[i]]<-(VectorSource(temp))
+#   corp.list[[i]]<-Corpus(speech.list[[i]])
+# }
+
+```
+Not surprisingly, the presidents are using the word "will" a lot. The speeches we are analyzing are the start of their term in office, so this makes sense. Let's take a look at Abe Lincoln and George W. Bush to see if there are any glaring differences in word choice from century to century. 
+
+##Word Frequency
+```{r}
+dtm.Abraham<-summarise(group_by(dtm.tidy[dtm.tidy$document ==1,],term), sum(count))
+wordcloud(dtm.Abraham$term,dtm.Abraham$`sum(count)`,
+          scale=c(5,.5),
+          max.words=30,
+          min.freq=1,
+          random.order=FALSE,
+          colors=brewer.pal(9,"Reds"))
+
+```
+Honest Abe is concerned with the ability of the government to solve social problems, and the power of the consitution. We see that as compared with the overall word cloud, Abe emphasizes the capacity for change with the frequent use of the word "can". What about George Jr?
+
+
+```{r}
+dtm.GeorgeBush<-summarise(group_by(dtm.tidy[dtm.tidy$document %in% c(20,21),],term), sum(count))
+wordcloud(dtm.GeorgeBush$term,dtm.GeorgeBush$`sum(count)`,
+          scale=c(5,.5),
+          max.words=30,
+          min.freq=1,
+          random.order=FALSE,
+          colors=brewer.pal(9,"Greens"))
+```
+George is a big fan of "Will", like the other presidents, but true to his Republic party, he uses the word "freedom" as much as he can. 
+
+Let's see if the historian's favorite and least favorite presidents wordclouds give us any insight. First, the 3 least favorite full-term presidents. Let's look at Buchanan, Pierce, and Harding. 
+```{r}
+colnames(ranking)<-c("President", "Ranking")
+ranking[c(1:4,40:43),]
+```
+```{r}
+dtm.Buchanan<-summarise(group_by(dtm.tidy[dtm.tidy$document ==26,],term), sum(count))
+wordcloud(dtm.Buchanan$term,dtm.Buchanan$`sum(count)`,
+          scale=c(5,.5),
+          max.words=30,
+          min.freq=1,
+          random.order=FALSE,
+          colors=brewer.pal(9,"Blues"))
+dtm.Pierce<-summarise(group_by(dtm.tidy[dtm.tidy$document ==16,],term), sum(count))
+wordcloud(dtm.Pierce$term,dtm.Pierce$`sum(count)`,
+          scale=c(5,.5),
+          max.words=30,
+          min.freq=1,
+          random.order=FALSE,
+          colors=brewer.pal(9,"Greens"))
+
+dtm.Harding<-summarise(group_by(dtm.tidy[dtm.tidy$document ==49,],term), sum(count))
+wordcloud(dtm.Harding$term,dtm.Harding$`sum(count)`,
+          scale=c(5,.5),
+          max.words=30,
+          min.freq=1,
+          random.order=FALSE,
+          colors=brewer.pal(9,"Blues"))
+
+
+```
+
+```{r}
+dtm.Washington<-summarise(group_by(dtm.tidy[dtm.tidy$document %in% c(18,19),],term), sum(count))
+wordcloud(dtm.Washington$term,dtm.Washington$`sum(count)`,
+          scale=c(5,.5),
+          max.words=30,
+          min.freq=1,
+          random.order=FALSE,
+          colors=brewer.pal(9,"Reds"))
+dtm.FRoos<-summarise(group_by(dtm.tidy[dtm.tidy$document %in% c(12,13,14,15),],term), sum(count))
+wordcloud(dtm.FRoos$term,dtm.FRoos$`sum(count)`,
+          scale=c(5,.5),
+          max.words=30,
+          min.freq=1,
+          random.order=FALSE,
+          colors=brewer.pal(9,"Blues"))
+
+dtm.TRoos<-summarise(group_by(dtm.tidy[dtm.tidy$document ==44,],term), sum(count))
+wordcloud(dtm.TRoos$term,dtm.TRoos$`sum(count)`,
+          scale=c(5,.5),
+          max.words=30,
+          min.freq=1,
+          random.order=FALSE,
+          colors=brewer.pal(9,"Reds"))
+
+
+```
+The favorite presidents and the least favorite use a lot of the same words, but it's interesting to note the greater use of virtues in the favorite presidents. For example, note Theodore Roosevelt's findness for the words "Life" and "Great" and Franklin Roosevelt's use of "People" and "Democracy".
+##Sentence Length
+Now let's look at these speeches from a different angle, how longwinded are these speeches? Are some speakers using longer sentences than others?
+```{r}
+sentence.list=NULL
+for(i in 1:nrow(df)){
+  sentences=sent_detect(df$text[i],
+                        endmarks = c("?", ".", "!", "|",";"))
+  if(length(sentences)>0){
+    emotions=get_nrc_sentiment(sentences)
+    word.count=word_count(sentences)
+    # colnames(emotions)=paste0("emo.", colnames(emotions))
+    # in case the word counts are zeros?
+    emotions=diag(1/(word.count+0.01))%*%as.matrix(emotions)
+    sentence.list=rbind(sentence.list, 
+                        cbind(df[i,-ncol(df)],
+                              sentences=as.character(sentences), 
+                              word.count,
+                              emotions,
+                              sent.id=1:length(sentences)
+                              )
+    )
+  }
+}
+sentence.list<-as.data.frame(sentence.list)
+sentence.list$speaker<-NA
+for(i in 1:58){
+sentence.list$speaker[sentence.list$V1==i]<-files[i]
+}
+
+sentence.length<-data.frame(
+  name=files
+)
+sentence.length$numwords<-NA
+sentence.list$word.count<-as.numeric(sentence.list$word.count)
+for(names in files){
+sentence.length$numwords[as.character(sentence.length$name)==names]<- mean(as.numeric(sentence.list$word.count[as.character(sentence.list$speaker)==names]))
+}
+
+
+```
+
+
+```{r}
+bestworst<- c(1,16,18,26,44,49)
+ggplot(sentence.length[bestworst,])+geom_col(aes(x=name,y=numwords),fill="firebrick")+ylab("Average Length of Sentence")+ xlab("President")
+
+```
+
+
+Using our subset of the best and worst presidents, we can see there's not a whole lot of variation in the number of words in a sentence. This makes sense, because these are speeches. The length of a sentence in speech would tend to be random. What about the content of the speeches?
+
+##Sentiment Analysis
+What tends to be the sentiment in an inaugeral speech? If we can capture the general "vibe" of a speech as positive or negative, maybe this will give us some insight into the rhetoric of a great leader. 
+
+
+```{r}
+##In Progress
+```
+
+##Conclusions
+We looked at history's favorite and least favorite presidents, and explored some of the powerful tools available to analyze text data. If we had more time, it'd be fun to further flesh out the historian's favroite sentiments of a president, and pull in more speec data to make sure I'm giving a fair picture of the sentiment of a presidential candidate. 
+
+
 ```
