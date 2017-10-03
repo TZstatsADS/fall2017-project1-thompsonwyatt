@@ -38,21 +38,45 @@ library(syuzhet)
 
 ```
 
-I've got a folder of every inaugeration speech saved as a .txt file, so the first thing I need to do is bring in the speeches and put them into a format that we can use for some fun analysis. In this chunk of code, I take the speeches and put them into a Document-Term Matrix so we can see what words the presidents are using most frequently. I then create a wordcloud across all presidential speeches to visualize the relative frequency of words and get a handle on what this text mining analysis will look like. 
+
 ##Format and Import Data
+
+
 ```{r,warnings=FALSE}
 ranking<-read.csv("../data/CSPANRanking.csv",header = F)
-
+dates<-read.table("../data/InauguationDates.txt", sep="\t", header=TRUE)
+#dates$PRESIDENT<-gsub(" ", "", dates$PRESIDENT)
+meta<-read.csv("../data/InaugurationInfo.csv")
 files<- list.files(path="../data/InauguralSpeeches")
 speeches<-trimws(files)
 speeches<- paste("../data/InauguralSpeeches/",speeches, sep="")
 speechlist<- lapply(speeches, read_file)
 speechlist<-as.vector(speechlist)
+```
+
+```{r}
+meta$Words<-as.numeric(meta$Words)
+ggplot(meta, aes(x=1:nrow(meta), y= Words))+geom_line(colour="firebrick3", size=1.5)
+  xlab("President Number") + theme_bw()
+  ylab("Total Number of Words in Speech")
+
+
+paste("The second time speakers give speeches averaging, ",mean(meta$Words[meta$Term==2])," words")
+paste("But the first time speakers give speeches averaging, ",mean(meta$Words[meta$Term==1])," words")
+
+ggplot(meta,aes(x=1:nrow(meta), y= Words))+geom_point(aes(col=Party))+ylab("Total Words")+xlab("President Number")+ggtitle("Are some parties more gabby than others?")
+```
+First, we should see if president's are using a different volume of words across time. Contrary to what I expected, there's not a trend of longer speeches. But we do note some different behaviors among the presidents. The Republicans appear to give longer speeches, and the second time presidents give shorter inaugaration addresses. Let's take a look at what words the presidents used the most often.
+
+In this chunk of code, I take the speeches and put them into a Document-Term Matrix so we can see what words the presidents are using most frequently. I then create a wordcloud across all presidential speeches to visualize the relative frequency of words and get a handle on what this text mining analysis will look like. 
+
+```{r}
 files<-gsub("inaug","",files)
 files<-gsub(".txt","",files)
 df<-data.frame(
   pres=speeches
 )
+
 df$text<-speechlist
 df$text<-as.character(df$text)
 speech.corp<-Corpus(VectorSource(df$text))
@@ -78,6 +102,7 @@ wordcloud(dtm.overall$term,dtm.overall$`sum(count)`,
 #   speech.list[[i]]<-(VectorSource(temp))
 #   corp.list[[i]]<-Corpus(speech.list[[i]])
 # }
+
 
 ```
 Not surprisingly, the presidents are using the word "will" a lot. The speeches we are analyzing are the start of their term in office, so this makes sense. Let's take a look at Abe Lincoln and George W. Bush to see if there are any glaring differences in word choice from century to century. 
@@ -139,7 +164,7 @@ wordcloud(dtm.Harding$term,dtm.Harding$`sum(count)`,
 
 ```
 
-```{r}
+```{r, warnings=FALSE}
 dtm.Washington<-summarise(group_by(dtm.tidy[dtm.tidy$document %in% c(18,19),],term), sum(count))
 wordcloud(dtm.Washington$term,dtm.Washington$`sum(count)`,
           scale=c(5,.5),
@@ -209,6 +234,10 @@ sentence.length$numwords[as.character(sentence.length$name)==names]<- mean(as.nu
 
 
 ```{r}
+
+
+
+
 bestworst<- c(1,16,18,26,44,49)
 ggplot(sentence.length[bestworst,])+geom_col(aes(x=name,y=numwords),fill="firebrick")+ylab("Average Length of Sentence")+ xlab("President")
 
@@ -222,11 +251,57 @@ What tends to be the sentiment in an inaugeral speech? If we can capture the gen
 
 
 ```{r}
-##In Progress
+sentence.length$anger<-NA
+sentence.length$anticipation<-NA
+sentence.length$disgust<-NA
+sentence.length$fear<-NA
+sentence.length$joy<-NA
+sentence.length$sadness<-NA
+sentence.length$surprise<-NA
+sentence.length$trust<-NA
+sentence.length$negative<-NA
+sentence.length$positive<-NA
+for(names in files){
+
+sentence.length$anger[as.character(sentence.length$name)==names]<- mean(as.numeric(as.character(sentence.list$anger[as.character(sentence.list$speaker)==names])))
+sentence.length$anticipation[as.character(sentence.length$name)==names]<- mean(as.numeric(as.character(sentence.list$anticipation[as.character(sentence.list$speaker)==names])))
+sentence.length$disgust[as.character(sentence.length$name)==names]<- mean(as.numeric(as.character(sentence.list$disgust[as.character(sentence.list$speaker)==names])))
+sentence.length$fear[as.character(sentence.length$name)==names]<- mean(as.numeric(as.character(sentence.list$fear[as.character(sentence.list$speaker)==names])))
+sentence.length$joy[as.character(sentence.length$name)==names]<- mean(as.numeric(as.character(sentence.list$joy[as.character(sentence.list$speaker)==names])))
+sentence.length$sadness[as.character(sentence.length$name)==names]<- mean(as.numeric(as.character(sentence.list$sadness[as.character(sentence.list$speaker)==names])))
+sentence.length$surprise[as.character(sentence.length$name)==names]<- mean(as.numeric(as.character(sentence.list$surprise[as.character(sentence.list$speaker)==names])))
+sentence.length$trust[as.character(sentence.length$trust)==names]<- mean(as.numeric(as.character(sentence.list$trust[as.character(sentence.list$speaker)==names])))
+sentence.length$negative[as.character(sentence.length$name)==names]<- mean(as.numeric(as.character(sentence.list$negative[as.character(sentence.list$speaker)==names])))
+sentence.length$positive[as.character(sentence.length$name)==names]<- mean(as.numeric(as.character(sentence.list$positive[as.character(sentence.list$speaker)==names])))
+}
+
+
+ggplot(sentence.length[bestworst,])+geom_col(aes(x=name,y=anger,fill=name))+ylab("Average Sentiment Score for Anger")+ xlab("President")+theme(legend.title=element_blank())
 ```
 
+```{r}
+ggplot(sentence.length[bestworst,])+geom_col(aes(x=name,y=joy,fill=name))+ylab("Average Sentiment Score for Joy")+ xlab("President")+theme(legend.title=element_blank())
+```
+
+
+```{r}
+ggplot(sentence.length[bestworst,])+geom_col(aes(x=name,y=fear,fill=name))+ylab("Average Sentiment Score for Fear")+ xlab("President")+theme(legend.title=element_blank())
+```
+```{r}
+ggplot(sentence.length[bestworst,])+geom_col(aes(x=name,y=anticipation,fill=name))+ylab("Average Sentiment Score for Anticipation")+ xlab("President")+theme(legend.title=element_blank())
+```
+Not surprisingly, Lincoln's speech appears to be fearful and relatively lacking in joy. A country on the brink of a civil war!
+```{r}
+ggplot(sentence.length[bestworst,])+geom_col(aes(x=name,y=positive),fill="blue")+ylab("Average Positivity Score of Sentence")+ xlab("President")+theme(legend.title=element_blank())
+
+ggplot(sentence.length[bestworst,])+geom_col(aes(x=name,y=anger),fill="firebrick")+ylab("Average Negativity Score of Sentence")+ xlab("President")+theme(legend.title=element_blank())
+
+```
+
+In most of the sentiment analysis, we've seen no relation between the sentiments of the celebrated and the not so celebrated presidents of history. Although in the final graph on negativity, we see that the historians' least favorite presidents made everyone grumpy at their inaugaration speech. 
+
 ##Conclusions
-We looked at history's favorite and least favorite presidents, and explored some of the powerful tools available to analyze text data. If we had more time, it'd be fun to further flesh out the historian's favroite sentiments of a president, and pull in more speec data to make sure I'm giving a fair picture of the sentiment of a presidential candidate. 
+We looked at history's favorite and least favorite presidents, and explored some of the powerful tools available to analyze text data. In the future, it'd be fun to further flesh out the historian's favroite sentiments of a president, and pull in more speech data to make sure we're getting a fair picture of the sentiment of a presidential candidate. 
 
 
 ```
