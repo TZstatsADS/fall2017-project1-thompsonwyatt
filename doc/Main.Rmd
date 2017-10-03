@@ -1,5 +1,5 @@
 ---
-title: "The Secret to Greatness: A Look Into Historians' Presidential Rankings"
+title: 'The Secret to Greatness: A Look Into Historians'' Presidential Rankings'
 author: "Wyatt Thompson"
 date: "September 18, 2017"
 output:
@@ -182,7 +182,7 @@ wordcloud(dtm.FRoos$term,dtm.FRoos$`sum(count)`,
 
 dtm.TRoos<-summarise(group_by(dtm.tidy[dtm.tidy$document ==44,],term), sum(count))
 wordcloud(dtm.TRoos$term,dtm.TRoos$`sum(count)`,
-          scale=c(5,.5),
+          scale=c(3,.3),
           max.words=30,
           min.freq=1,
           random.order=FALSE,
@@ -190,6 +190,8 @@ wordcloud(dtm.TRoos$term,dtm.TRoos$`sum(count)`,
 
 
 ```
+
+
 The favorite presidents and the least favorite use a lot of the same words, but it's interesting to note the greater use of virtues in the favorite presidents. For example, note Theodore Roosevelt's findness for the words "Life" and "Great" and Franklin Roosevelt's use of "People" and "Democracy".
 ##Sentence Length
 Now let's look at these speeches from a different angle, how longwinded are these speeches? Are some speakers using longer sentences than others?
